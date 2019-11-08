@@ -261,10 +261,16 @@ void reference_gemm(rocblas_operation transA,
 
 namespace
 {
-    bool is_replacement_kernel(rocblas_int m, rocblas_int n)
+    bool is_replacement_kernel(rocblas_operation transA,
+                               rocblas_operation transB,
+                               rocblas_int       m,
+                               rocblas_int       n,
+                               rocblas_int       k)
     {
-        if((m == 512 && n == 512) || (m == 1024 && n == 1024) || (m == 2048 && n == 2048)
-           || (m == 4096 && n == 4096) || (m == 960 && n == 1024) || (m == 3840 && n == 4096))
+        if(transA == rocblas_operation_transpose && transB == rocblas_operation_none
+           && ((m == 512 && n == 512 && k == 512) || (m == 1024 && n == 1024 && k == 1024)
+               || (m == 2048 && n == 2048 && k == 2048) || (m == 4096 && n == 4096 && k == 4096)
+               || (m == 960 && n == 1024 && k == 1024) || (m == 3840 && n == 4096 && k == 4096)))
             return true;
         return false;
     }
@@ -291,7 +297,7 @@ void reference_gemm(rocblas_operation transA,
         C_float[i] = C[i];
     cblas_gemm<rocblas_bfloat16, float, float>(
         transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C_float, ldc);
-    bool round = !is_replacement_kernel(m, n);
+    bool round = !is_replacement_kernel(transA, transB, m, n, k);
     for(int i = 0; i < size_C; ++i)
         C[i] = round ? rocblas_bfloat16(C_float[i]) : float_to_bfloat16_truncate(C_float[i]);
 }
